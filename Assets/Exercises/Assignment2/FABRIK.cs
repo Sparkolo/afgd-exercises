@@ -35,9 +35,106 @@ namespace AfGD.Assignment2
 
         private void Solve()
         {
-            // TODO: YOUR IMPLEMENTATION HERE
-            // FEEL FREE TO CREATE HELPER FUNCTIONS
+            float rootTargetDist = (joints[0].position - target.position).magnitude;
+            if(rootTargetDist > chainLength)
+            {
+                Unreachable();
+            }
+            else
+            {
+                Vector3 rootConstraintPos = joints[0].position;
+                float difToTarget = (joints[joints.Length - 1].position - target.position).magnitude;
+                int curIteration = 0;
+                while (difToTarget > tolerance && curIteration < maxIterations)
+                {
+                    joints[joints.Length - 1].position = target.position;
+                    FwdReach();
+                    joints[0].position = rootConstraintPos;
+                    BwdReach();
+                    difToTarget = (joints[joints.Length - 1].position - target.position).magnitude;
+                    curIteration++;
+                }
+            }
+            AdjustRotation();
+        }
 
+        private void Unreachable()
+        {
+            float distToTarget, lambdaDist;
+            for (int i=0; i<joints.Length - 1; i++)
+            {
+                distToTarget = (joints[i].position - target.position).magnitude;
+                lambdaDist = distances[i] / distToTarget;
+                joints[i+1].position = (1 - lambdaDist) * joints[i].position + lambdaDist * target.position;
+            }
+        }
+
+        private void FwdReach()
+        {
+            float distToTarget, lambdaDist;
+            for (int i = joints.Length - 2; i > -1; i--)
+            {
+                distToTarget = (joints[i+1].position - joints[i].position).magnitude;
+                lambdaDist = distances[i] / distToTarget;
+                joints[i].position = (1 - lambdaDist) * joints[i+1].position + lambdaDist * joints[i].position;
+                ConstrainRotation(i);
+            }
+        }
+
+        private void BwdReach()
+        {
+            float distToTarget, lambdaDist;
+            for (int i = 0; i < joints.Length - 1; i++)
+            {
+                distToTarget = (joints[i + 1].position - joints[i].position).magnitude;
+                lambdaDist = distances[i] / distToTarget;
+                joints[i+1].position = (1 - lambdaDist) * joints[i].position + lambdaDist * joints[i+1].position;
+                ConstrainRotation(i + 1);
+            }
+        }
+        private void ConstrainRotation(int index)
+        {
+            if (index < 1 || index > joints.Length - 2)
+                return;
+
+            Vector3 l = joints[index].position - joints[index - 1].position;
+            Vector3 ln = joints[index + 1].position - joints[index].position;
+
+            if (Vector3.Angle(l, ln) < rotationLimit)
+                return;
+
+            Vector3 o = Vector3.Project(ln, l);
+
+            if(rotationLimit < 90f && Vector3.Dot(l, ln) < 0)
+            {
+                o = -o;
+                ln = Vector3.Reflect(ln, l);
+            }
+
+            Vector3 po = joints[index].position + o;
+
+            Vector3 d = (joints[index + 1].position - po).normalized;
+
+            float r = o.magnitude * Mathf.Tan(Mathf.Deg2Rad * rotationLimit);
+
+            joints[index + 1].position = po + r * d;
+        }
+
+        private void AdjustRotation()
+        {
+            for(int i=0; i<joints.Length-1; i++)
+            {
+                Vector3 direction = (joints[i + 1].position - joints[i].position).normalized;
+                joints[i].right = direction;
+
+                //Vector3 direction = (joints[i + 1].position - joints[i].position).normalized;
+                //Vector3 rightVec = joints[i].right;
+
+                //Vector3 axis = Vector3.Cross(rightVec, direction).normalized;
+                //float angle = Mathf.Acos(Vector3.Dot(rightVec, direction) / (rightVec.magnitude * direction.magnitude));
+
+                //joints[i].rotation = Quaternion.AngleAxis(angle, axis);
+            }
         }
 
         // Start is called before the first frame update
