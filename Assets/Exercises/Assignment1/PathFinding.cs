@@ -31,6 +31,7 @@ namespace AfGD.Assignment1
         // List of positions that store the result
         // of the path we have found.
         List<Vector3> m_Path = new List<Vector3>();
+        DebugCurve hermiteCurve;
 
         public void Run()
         {
@@ -61,6 +62,10 @@ namespace AfGD.Assignment1
             // Execute the algorithm we have selected.
             AStarSearch.Execute(m_Graph, start, goal, cameFrom);
 
+            // Initialize the Hermite curve with the path just found
+            hermiteCurve = GetComponent<DebugCurve>();
+            hermiteCurve.controlPoints = m_Path;
+            hermiteCurve.Init();
 
             // Reconstruct Path
             ReconstructPath(cameFrom, start, goal, m_Path);
